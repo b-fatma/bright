@@ -44,7 +44,7 @@ def main():
     lines.append("**Metric**: RMSE (Root Mean Squared Error) — lower is better\n\n")
     
     lines.append("| Rank | Team | Model | RMSE | RMSE (Cold) | RMSE (Warm) | Date (UTC) | Notes |\n")
-    lines.append("|---:|---|---|---:|---:|---:|---|---|\n")
+    lines.append("|-----:|------|-------|-----:|------------:|------------:|------------|-------|\n")
     
     for i, r in enumerate(rows, start=1):
         team = (r.get("team") or "").strip()
@@ -55,7 +55,25 @@ def main():
         ts = (r.get("timestamp_utc") or "").strip()
         notes = (r.get("notes") or "").strip()
         
-        model_disp = f"`{model}`" if model else ""
+        # Format model as code
+        model_disp = f"`{model}`" if model else "-"
+        
+        # Format numbers to 4 decimal places if they're valid floats
+        try:
+            rmse = f"{float(rmse):.4f}"
+        except:
+            pass
+        
+        try:
+            rmse_cold = f"{float(rmse_cold):.4f}"
+        except:
+            rmse_cold = "-"
+        
+        try:
+            rmse_warm = f"{float(rmse_warm):.4f}"
+        except:
+            rmse_warm = "-"
+        
         lines.append(f"| {i} | {team} | {model_disp} | {rmse} | {rmse_cold} | {rmse_warm} | {ts} | {notes} |\n")
     
     MD_PATH.write_text("".join(lines), encoding="utf-8")
