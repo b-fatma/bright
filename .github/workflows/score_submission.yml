@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          ref: main
+          ref: master
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
@@ -105,7 +105,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leaderboard/leaderboard.csv leaderboard/leaderboard.md
           git commit -m "Update leaderboard: ${{ steps.find_submission.outputs.team }}/${{ steps.find_submission.outputs.run_id }}"
-          git push origin HEAD:main
+          git push origin HEAD:master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
