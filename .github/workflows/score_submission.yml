@@ -11,9 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          ref: master
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}  
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -36,17 +36,14 @@ jobs:
       - name: Find submission path and extract metadata
         id: find_submission
         run: |
-          # Find the predictions.csv file in the PR changes
           SUBMISSION_PATH=$(find submissions/inbox -name "predictions.csv" -type f | head -n 1)
           echo "path=$SUBMISSION_PATH" >> $GITHUB_OUTPUT
           
-          # Extract team name and run_id from path
           TEAM=$(echo $SUBMISSION_PATH | cut -d'/' -f3)
           RUN_ID=$(echo $SUBMISSION_PATH | cut -d'/' -f4)
           echo "team=$TEAM" >> $GITHUB_OUTPUT
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
           
-          # Check for metadata.json
           METADATA_PATH=$(dirname $SUBMISSION_PATH)/metadata.json
           if [ -f "$METADATA_PATH" ]; then
             MODEL=$(jq -r '.model // "unknown"' $METADATA_PATH)
@@ -72,7 +69,6 @@ jobs:
             data/test_labels.csv)
           echo "$OUTPUT"
           
-          # Extract metrics
           RMSE=$(echo "$OUTPUT" | grep "RMSE=" | cut -d'=' -f2)
           RMSE_COLD=$(echo "$OUTPUT" | grep "RMSE_COLD=" | cut -d'=' -f2 || echo "N/A")
           RMSE_WARM=$(echo "$OUTPUT" | grep "RMSE_WARM=" | cut -d'=' -f2 || echo "N/A")
@@ -84,18 +80,14 @@ jobs:
       - name: Update leaderboard
         if: steps.score.outcome == 'success'
         run: |
-          # Ensure leaderboard directory exists
           mkdir -p leaderboard
           
-          # Create header if file doesn't exist
           if [ ! -f leaderboard/leaderboard.csv ]; then
             echo "team,model,rmse,rmse_cold_start,rmse_warm_start,timestamp_utc,notes" > leaderboard/leaderboard.csv
           fi
           
-          # Append new entry
           echo "${{ steps.find_submission.outputs.team }},${{ steps.find_submission.outputs.model }},${{ steps.score.outputs.rmse }},${{ steps.score.outputs.rmse_cold }},${{ steps.score.outputs.rmse_warm }},$(date -u +%Y-%m-%dT%H:%M:%SZ),\"${{ steps.find_submission.outputs.notes }}\"" >> leaderboard/leaderboard.csv
           
-          # Render markdown leaderboard
           python competition/render_leaderboard.py
       
       - name: Commit leaderboard update
@@ -105,13 +97,14 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leaderboard/leaderboard.csv leaderboard/leaderboard.md
           git commit -m "Update leaderboard: ${{ steps.find_submission.outputs.team }}/${{ steps.find_submission.outputs.run_id }}"
-          git push origin HEAD:master
+          git push origin HEAD:${{ github.event.repository.default_branch }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  
       
       - name: Comment score
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.PAT_TOKEN }}  
           script: |
             const rmse = '${{ steps.score.outputs.rmse }}';
             const rmseCold = '${{ steps.score.outputs.rmse_cold }}';
