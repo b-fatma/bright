@@ -280,14 +280,3 @@ If you use this dataset, please cite:
 
 **More info:** https://grouplens.org/datasets/movielens/100k/
 
----
-
-## Notes
-
-1. **No pre-split files needed:** The raw dataset includes pre-split files (u1.base, u1.test, etc.) but we create our own custom split with cold-start challenge.
-
-2. **Graph structure:** The bipartite graph has edges only between users and movies (no user-user or movie-movie edges by default).
-
-3. **Bidirectional edges:** For GNN message passing, edges are added in both directions (user→movie and movie→user).
-
-4. **Feature engineering:** User features include age (normalized), gender (one-hot), and occupation (one-hot). Movie features are genre one-hot encodings.

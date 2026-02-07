@@ -1,13 +1,12 @@
 """
 MovieLens 100K Dataset Preprocessing for GNN Competition
-CORRECTED VERSION - Matches template requirements exactly
 """
 
 import pandas as pd
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 import pickle
 import os
 
@@ -73,7 +72,6 @@ def load_movielens_data():
 
     return ratings, users, movies
 
-
 def create_user_features(users):
     """
     Create user feature matrix
@@ -92,11 +90,15 @@ def create_user_features(users):
     occupation_encoded = occupation_encoder.fit_transform(users['occupation'])
     num_occupations = len(occupation_encoder.classes_)
     
+    # Scale age using StandardScaler
+    scaler = StandardScaler()
+    age_scaled = scaler.fit_transform(users['age'].values.reshape(-1, 1)).flatten()
+    
     for idx, user in users.iterrows():
         feat = []
         
-        # Age (normalized to 0-1)
-        feat.append(user['age'] / 100.0)
+        # Age (standardized)
+        feat.append(age_scaled[idx])
         
         # Gender (binary)
         feat.append(float(gender_encoded[idx]))
@@ -114,7 +116,8 @@ def create_user_features(users):
     return user_features, {
         'gender_encoder': gender_encoder,
         'occupation_encoder': occupation_encoder,
-        'num_occupations': num_occupations
+        'num_occupations': num_occupations,
+        'age_scaler': scaler
     }
 
 
@@ -134,7 +137,7 @@ def create_movie_features(movies):
     return movie_features
 
 
-def create_bipartite_graph(ratings, num_users, num_movies, test_size=0.2, cold_start_threshold=5):
+def create_bipartite_graph(ratings, num_users, num_movies, test_size=0.01, cold_start_threshold=10):
     """
     Create bipartite graph with cold start problem setup
     
@@ -337,12 +340,12 @@ def create_dataset():
     
     # 6. Save test labels (PRIVATE - includes ratings and cold_start flag)
     # CRITICAL: Add 'id' column to match test_nodes.csv
-    test_labels = test_ratings[['user_id', 'movie_id', 'rating', 'is_cold_start']].copy()
+    test_labels = test_ratings[['rating', 'is_cold_start']].copy()
     test_labels.insert(0, 'id', range(len(test_labels)))
     test_labels.to_csv(os.path.join(OUTPUT_DATA_DIR, 'test_labels.csv'), index=False)
-    print("  ✓ test_labels.csv (with id and is_cold_start columns)")
+    print("  ✓ test_labels.csv (minimal: id, rating, is_cold_start)")
     
-    print("\n⚠️  IMPORTANT: data/test_labels.csv is PRIVATE!")
+    print("\n⚠️  IMPORTANT: data/private/test_labels.csv is PRIVATE!")
     print("   This file should be stored in GitHub Secrets, NOT committed to repo!")
     
     # ===== METADATA =====

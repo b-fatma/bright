@@ -1,2 +1,2 @@
-task: binary_node_classification
-metric: roc_auc
+task: regression edge prediction
+metric: rmse

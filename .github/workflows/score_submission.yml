@@ -1,0 +1,135 @@
+name: Score Submission
+
+on:
+  pull_request:
+    paths:
+      - 'submissions/inbox/**'
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install dependencies
+        run: |
+          pip install pandas numpy scikit-learn
+      
+      - name: Create test labels file
+        run: |
+          echo "${{ secrets.TEST_LABELS }}" > data/test_labels.csv
+      
+      - name: Find submission path and extract metadata
+        id: find_submission
+        run: |
+          # Find the predictions.csv file in the PR changes
+          SUBMISSION_PATH=$(find submissions/inbox -name "predictions.csv" -type f | head -n 1)
+          echo "path=$SUBMISSION_PATH" >> $GITHUB_OUTPUT
+          
+          # Extract team name and run_id from path
+          TEAM=$(echo $SUBMISSION_PATH | cut -d'/' -f3)
+          RUN_ID=$(echo $SUBMISSION_PATH | cut -d'/' -f4)
+          echo "team=$TEAM" >> $GITHUB_OUTPUT
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          
+          # Check for metadata.json
+          METADATA_PATH=$(dirname $SUBMISSION_PATH)/metadata.json
+          if [ -f "$METADATA_PATH" ]; then
+            MODEL=$(jq -r '.model // "unknown"' $METADATA_PATH)
+            NOTES=$(jq -r '.notes // ""' $METADATA_PATH)
+          else
+            MODEL="unknown"
+            NOTES=""
+          fi
+          echo "model=$MODEL" >> $GITHUB_OUTPUT
+          echo "notes=$NOTES" >> $GITHUB_OUTPUT
+      
+      - name: Validate submission
+        run: |
+          python competition/validate_submission.py \
+            ${{ steps.find_submission.outputs.path }} \
+            data/public/test_nodes.csv
+      
+      - name: Evaluate submission
+        id: score
+        run: |
+          OUTPUT=$(python competition/evaluate.py \
+            ${{ steps.find_submission.outputs.path }} \
+            data/test_labels.csv)
+          echo "$OUTPUT"
+          
+          # Extract metrics
+          RMSE=$(echo "$OUTPUT" | grep "RMSE=" | cut -d'=' -f2)
+          RMSE_COLD=$(echo "$OUTPUT" | grep "RMSE_COLD=" | cut -d'=' -f2 || echo "N/A")
+          RMSE_WARM=$(echo "$OUTPUT" | grep "RMSE_WARM=" | cut -d'=' -f2 || echo "N/A")
+          
+          echo "rmse=$RMSE" >> $GITHUB_OUTPUT
+          echo "rmse_cold=$RMSE_COLD" >> $GITHUB_OUTPUT
+          echo "rmse_warm=$RMSE_WARM" >> $GITHUB_OUTPUT
+      
+      - name: Update leaderboard
+        if: steps.score.outcome == 'success'
+        run: |
+          # Ensure leaderboard directory exists
+          mkdir -p leaderboard
+          
+          # Create header if file doesn't exist
+          if [ ! -f leaderboard/leaderboard.csv ]; then
+            echo "team,model,rmse,rmse_cold_start,rmse_warm_start,timestamp_utc,notes" > leaderboard/leaderboard.csv
+          fi
+          
+          # Append new entry
+          echo "${{ steps.find_submission.outputs.team }},${{ steps.find_submission.outputs.model }},${{ steps.score.outputs.rmse }},${{ steps.score.outputs.rmse_cold }},${{ steps.score.outputs.rmse_warm }},$(date -u +%Y-%m-%dT%H:%M:%SZ),\"${{ steps.find_submission.outputs.notes }}\"" >> leaderboard/leaderboard.csv
+          
+          # Render markdown leaderboard
+          python competition/render_leaderboard.py
+      
+      - name: Commit leaderboard update
+        if: steps.score.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leaderboard/leaderboard.csv leaderboard/leaderboard.md
+          git commit -m "Update leaderboard: ${{ steps.find_submission.outputs.team }}/${{ steps.find_submission.outputs.run_id }}"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Comment score
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const rmse = '${{ steps.score.outputs.rmse }}';
+            const rmseCold = '${{ steps.score.outputs.rmse_cold }}';
+            const rmseWarm = '${{ steps.score.outputs.rmse_warm }}';
+            const team = '${{ steps.find_submission.outputs.team }}';
+            const runId = '${{ steps.find_submission.outputs.run_id }}';
+            
+            const body = `## 🎯 Submission Score
+            
+            **Team:** ${team}  
+            **Run:** ${runId}
+            
+            | Metric | Score |
+            |--------|-------|
+            | **RMSE (Overall)** | ${rmse} |
+            | RMSE (Cold Start) | ${rmseCold} |
+            | RMSE (Warm Start) | ${rmseWarm} |
+            
+            ✅ Submission is valid and scored!
+            
+            Your score has been added to the [leaderboard](../leaderboard/leaderboard.md).`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
