@@ -11,7 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          ref: main
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -21,6 +23,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pandas numpy scikit-learn
+      
+      - name: Checkout PR files
+        run: |
+          git fetch origin pull/${{ github.event.pull_request.number }}/head:pr-branch
+          git checkout pr-branch -- submissions/
       
       - name: Create test labels file
         run: |
@@ -98,7 +105,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leaderboard/leaderboard.csv leaderboard/leaderboard.md
           git commit -m "Update leaderboard: ${{ steps.find_submission.outputs.team }}/${{ steps.find_submission.outputs.run_id }}"
-          git push origin main
+          git push origin HEAD:main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
