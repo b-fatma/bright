@@ -1,0 +1,6 @@
+{
+  "team": "baseline",
+  "method": "human",
+  "model": "RandomForest",
+  "notes": "Sklearn RF baseline for testing"
+}
