@@ -189,9 +189,9 @@ git push origin your-branch
 ✅ Submission is valid and scored!
 ```
 
-### Step 5: Merge to leaderboard
+### Step 5: Add to leaderboard
 
-Once your PR is approved and merged, your score appears on the public leaderboard!
+Your score appears on the public leaderboard!
 
 ---
 
