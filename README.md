@@ -1,4 +1,4 @@
-# Bright: MovieLens Rating Prediction Challenge
+# BRIGHT: Bipartite Rating Inference on Heterogeneous Graphs with Cold-Start
 
 **Predict movie ratings on a sparse bipartite graph with cold-start users and movies.**
 
@@ -225,7 +225,7 @@ We report three metrics:
 ## 📜 Rules
 
 ### Allowed ✅
-- Any model architecture (GNN, ML, deep learning, ensembles)
+- Any GNN model architecture 
 - Unlimited offline training time
 - Feature engineering on provided data
 - Multiple submissions per team
@@ -234,7 +234,7 @@ We report three metrics:
 - External datasets or pretrained embeddings
 - Manual labeling of test data
 - Modifying evaluation scripts
-- Accessing test labels (stored as GitHub Secret)
+- Accessing test labels 
 
 **Violations will result in disqualification.**
 
@@ -309,11 +309,11 @@ If you use Bright in research, please cite:
 
 ```bibtex
 @misc{bright_2025,
-  title={Bright: A MovieLens Rating Prediction Challenge for Graph Neural Networks},
-  author={Your Name},
+  title={BRIGHT: Bipartite Rating Inference on Heterogeneous Graphs with Cold-Start},
+  author={BOULGHERAIF Fatma Zohra},
   year={2025},
   publisher={GitHub},
-  url={https://github.com/your-org/bright}
+  url={https://github.com/b-fatma/bright}
 }
 ```
 
